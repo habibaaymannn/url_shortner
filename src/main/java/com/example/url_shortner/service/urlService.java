@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class urlService {
+public class UrlService {
     private final LinkRepository linkRepository;
     private final ClickRepository clickRepository;
 
