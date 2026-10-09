@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: url_shortner
+
+  profiles:
+    active: dev

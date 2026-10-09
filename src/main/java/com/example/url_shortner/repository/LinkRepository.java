@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface LinkRepository extends JpaRepository<Link, UUID> {
     Optional<Link> findByShortCode(String shortCode);
+    Boolean existsByShortCode(String shortCode);
 }
