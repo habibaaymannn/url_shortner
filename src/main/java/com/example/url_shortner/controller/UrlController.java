@@ -1,6 +1,7 @@
 package com.example.url_shortner.controller;
 
 import com.example.url_shortner.dtos.ShortUrlResponse;
+import com.example.url_shortner.dtos.StatsResponse;
 import com.example.url_shortner.dtos.UrlCreationRequest;
 import com.example.url_shortner.service.UrlService;
 import jakarta.validation.Valid;
@@ -19,5 +20,10 @@ public class UrlController {
     ResponseEntity<ShortUrlResponse> createShortUrl(@Valid @RequestBody UrlCreationRequest urlCreationRequest) {
         ShortUrlResponse shortUrlResponse = urlService.createShortUrl(urlCreationRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(shortUrlResponse);
+    }
+
+    @GetMapping("/{shortCode}/stats")
+    ResponseEntity<StatsResponse> getStats(@PathVariable String shortCode) {
+        return ResponseEntity.ok(urlService.getStats(shortCode));
     }
 }

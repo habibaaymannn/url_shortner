@@ -1,19 +1,25 @@
 package com.example.url_shortner.service;
 
 import com.example.url_shortner.dtos.ShortUrlResponse;
+import com.example.url_shortner.dtos.StatsResponse;
 import com.example.url_shortner.dtos.UrlCreationRequest;
+import com.example.url_shortner.entity.Click;
 import com.example.url_shortner.entity.Link;
 import com.example.url_shortner.exceptionhandler.FunctionalException;
 import com.example.url_shortner.repository.ClickRepository;
 import com.example.url_shortner.repository.LinkRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UrlService {
@@ -63,10 +69,41 @@ public class UrlService {
         );
     }
 
-    public String getOriginalUrl(String shortUrl) {
+    public String redirectUrl(String shortCode, String referrer) {
         //add cache later
-        Link link = linkRepository.findByShortCode(shortUrl).orElseThrow(() -> new FunctionalException(HttpStatus.NOT_FOUND, "Link does not exist"));
+        Link link = linkRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new FunctionalException(HttpStatus.NOT_FOUND, "Link does not exist"));
+
+        // A failed analytics write must never break the redirect itself
+        // will be replaced by kafka
+        try {
+            Click click = new Click();
+            click.setLink(link);
+            click.setClickedAt(LocalDateTime.now());
+            click.setReferrer(truncate(referrer)); // to limit referrer to 255 char only
+            clickRepository.save(click);
+        } catch (Exception e) {
+            log.warn("Could not record click for {}", shortCode, e);
+        }
         return link.getOriginalUrl();
+    }
+
+    public StatsResponse getStats(String shortCode) {
+        Link link = linkRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new FunctionalException(HttpStatus.NOT_FOUND, "Link does not exist"));
+
+        Map<String, Long> byReferrer = new HashMap<>();
+        for (Object[] row : clickRepository.countByReferrer(link.getId())) {
+            byReferrer.put((String) row[0], (Long) row[1]);
+        }
+
+        return new StatsResponse(
+                link.getShortCode(),
+                link.getOriginalUrl(),
+                link.getCreatedAt(),
+                clickRepository.countByLinkId(link.getId()),
+                byReferrer
+        );
     }
 
     private String validateAndUseAlias(String alias) {
@@ -93,5 +130,10 @@ public class UrlService {
         }
         throw new FunctionalException(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Could not generate a unique short code. Please try again.");
+    }
+
+    private String truncate(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.length() <= 255 ? value : value.substring(0, 255);
     }
 }
