@@ -27,4 +27,8 @@ public class Click {
 
     @Column(name = "clicked_at", nullable = false, updatable = false)
     private LocalDateTime clickedAt;
+
+    @Column(name = "referrer", length = 255)
+    private String referrer;
+
 }
